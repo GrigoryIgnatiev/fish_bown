@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Задание</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #e0e0e0;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .line {
+            position: absolute;
+            top: 400px;
+            left: 10px;
+            width: 1000px;
+            border-top: 6px solid rgb(132, 132, 132);
+        }
+
+        .rotatable-line {
+            position: absolute;
+            width: 150px; 
+            height: 6px; 
+            background-color: rgb(132, 132, 132);
+            cursor: grab;
+            transform-origin: left center; 
+            transition: transform 0.2s ease; 
+        }
+
+        .rotatable-line.selected {
+            background-color: rgb(230, 0, 0); 
+        }
+
+        .input-box {
+            position: absolute;
+            top: 360px;
+            left: 1030px;
+            background-color: #1E90FF;
+            border: 5px solid #1E90FF;
+            padding: 10px;
+            height: 50px;
+            width: 140px;
+            color: white;
+            font-size: 16px;
+            z-index: 10;
+        }
+
+        .input-box::placeholder {
+            color: white;
+            opacity: 1;
+        }
+
+        .container {
+            position: relative;
+            height: 100%;
+        }
+
+        .toggle-button {
+            background-color: grey;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+
+        .task-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #777474;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+            transform: translateX(100%);
+            transition: transform 0.5s;
+        }
+
+        .task-panel.visible {
+            transform: translateX(0);
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 20px;
+        }
+
+        li {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+
+        .separator {
+            border-bottom: 2px solid #ccc;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="line"></div>
+    <input type="text" id="letter-input" class="input-box" placeholder="название" />
+
+    <div class="container">
+        <button class="toggle-button">☰</button>
+        <div class="task-panel" id="taskPanel">
+            <ul>
+                <li><button id="addTaskButton">Добавить задачу</button></li>
+                <li><button id="deleteTaskButton">Удалить задачу</button></li>
+                <li><button>Добавить кость</button></li>
+                <li><button>Завершить редактирование</button></li>
+                <li><button>Скрыть выполненное ✔️</button></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.querySelector('.toggle-button').addEventListener('click', function() {
+            const panel = document.getElementById('taskPanel');
+            panel.classList.toggle('visible');
+        });
+
+        let selectedLine = null; 
+        let isDragging = false;
+        let isRotating = false;
+        let startX, startY, initialAngle;
+
+        document.getElementById('addTaskButton').addEventListener('click', function() {
+            const rotatableLine = document.createElement('div');
+            rotatableLine.classList.add('rotatable-line');
+            rotatableLine.style.left = '100px'; 
+            rotatableLine.style.top = '100px'; 
+            document.body.appendChild(rotatableLine);
+
+            rotatableLine.addEventListener('click', function(event) {
+                event.stopPropagation(); 
+                if (selectedLine) {
+                    selectedLine.classList.remove('selected'); 
+                }
+                selectedLine = rotatableLine;
+                selectedLine.classList.add('selected'); 
+            });
+
+            rotatableLine.addEventListener('mousedown', function(event) {
+                if (event.shiftKey) {
+                    isRotating = true;
+                    const rect = rotatableLine.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    startX = event.clientX;
+                    startY = event.clientY;
+                    initialAngle = Math.atan2(startY - centerY, startX - centerX) * (180 / Math.PI);
+                } else {
+                    isDragging = true;
+                    rotatableLine.style.cursor = 'grabbing';
+                }
+            });
+
+            document.addEventListener('mousemove', function(event) {
+                if (isRotating && selectedLine) {
+                    const rect = selectedLine.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const angle = Math.atan2(event.clientY - centerY, event.clientX - centerX) * (180 / Math.PI);
+                    selectedLine.style.transform = `rotate(${angle - initialAngle}deg)`;
+                } else if (isDragging && selectedLine) {
+                    selectedLine.style.left = `${event.clientX - 75}px`; 
+                    selectedLine.style.top = `${event.clientY - 3}px`; 
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+                isRotating = false;
+                if (selectedLine) {
+                    selectedLine.style.cursor = 'grab';
+                }
+            });
+        });
+
+        document.getElementById('deleteTaskButton').addEventListener('click', function() {
+            if (selectedLine) {
+                selectedLine.remove(); 
+                selectedLine = null;
+            } else {
+                alert('Сначала выберите линию для удаления!');
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            if (selectedLine && !event.target.classList.contains('rotatable-line')) {
+                selectedLine.classList.remove('selected');
+                selectedLine = null;
+            }
+        });
+    </script>
+</body>
+</html>
